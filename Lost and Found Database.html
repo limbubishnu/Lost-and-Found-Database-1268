@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lost & Found Tracker</title>
+  <style>
+    /* Same styles as before */
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Lost & Found Tracker</h1>
+  </header>
+  <div class="container">
+    <button class="btn" onclick="toggleForm()">+ Add New Item</button>
+
+    <div id="item-form" style="display: none;">
+      <div class="form-group">
+        <label for="item-name">Item Name</label>
+        <input type="text" id="item-name" placeholder="Enter item name">
+      </div>
+      <div class="form-group">
+        <label for="item-description">Description</label>
+        <textarea id="item-description" placeholder="Enter item description"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="item-category">Category</label>
+        <select id="item-category">
+          <option value="Electronic Items">Electronic Items</option>
+          <option value="Clothes">Clothes</option>
+          <option value="Valuables">Valuables</option>
+          <option value="Others">Others</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="item-photo">Photo</label>
+        <input type="file" id="item-photo" accept="image/*">
+      </div>
+      <button class="btn" onclick="addItem()">Submit</button>
+    </div>
+
+    <div class="filter-section">
+      <select id="filter-category" onchange="filterItems()">
+        <option value="">All Categories</option>
+        <option value="Electronic Items">Electronic Items</option>
+        <option value="Clothes">Clothes</option>
+        <option value="Valuables">Valuables</option>
+        <option value="Others">Others</option>
+      </select>
+      <input type="date" id="start-date" onchange="filterItems()">
+      <input type="date" id="end-date" onchange="filterItems()">
+    </div>
+
+    <h2>Search Results</h2>
+    <div id="items-container" class="results-container"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js"></script>
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Function to toggle form visibility
+    function toggleForm() {
+      const form = document.getElementById('item-form');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Function to add an item to Firestore
+    async function addItem() {
+      const name = document.getElementById('item-name').value;
+      const description = document.getElementById('item-description').value;
+      const category = document.getElementById('item-category').value;
+      const photo = document.getElementById('item-photo').files[0];
+      const dateAdded = new Date().toISOString().split('T')[0];
+
+      if (!name || !description || !category || !photo) {
+        alert('Please fill in all fields and upload a photo.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async function (e) {
+        await db.collection('items').add({
+          name,
+          description,
+          category,
+          photo: e.target.result,
+          dateAdded
+        });
+        alert('Item added successfully!');
+        fetchItems();
+      };
+
+      reader.readAsDataURL(photo);
+    }
+
+    // Function to fetch items from Firestore
+    async function fetchItems() {
+      const snapshot = await db.collection('items').get();
+      const items = snapshot.docs.map(doc => doc.data());
+      displayItems(items);
+    }
+
+    // Display items
+    function displayItems(items) {
+      const container = document.getElementById('items-container');
+      container.innerHTML = '';
+
+      if (items.length === 0) {
+        container.innerHTML = `<p class="no-results">No items found.</p>`;
+        return;
+      }
+
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+
+        card.innerHTML = `
+          <img src="${item.photo}" alt="${item.name}">
+          <h3>${item.name}</h3>
+          <p><strong>Category:</strong> ${item.category}</p>
+          <p><strong>Date:</strong> ${item.dateAdded}</p>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // Fetch items on page load
+    fetchItems();
+  </script>
+</body>
+</html>
